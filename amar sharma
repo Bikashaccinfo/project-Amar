@@ -1,3 +1,53 @@
-this is amar file 
-hello world
-
+pipeline {
+    agent any
+    stages{
+        stage ('stage1-clone-git-repo') {
+          step {
+            git branch: 'main', url: 'https://github.com/Amarpal-ai/project-Amar.git'
+          }          
+        }
+        stage ('stage2-compile') {
+          step {
+            sh '/opt/maven/bin/mvn compile'
+          }        
+        }
+        stage ('stage3-codereview') {
+          step {
+            sh '/opt/maven/bin/mvn  -P metrics pmd:pmd'
+          }
+          post {
+            success{
+                recordIssues sourceCodeRetention: 'LAST_BUILD', tools: [pmdParser(pattern: '**/pmd.xml')]
+            }
+            always {
+                sh 'echo send email'
+            }
+          }
+        }
+        stage ('stage4-unitest') {
+          step {
+            sh '/opt/maven/bin/mvn test'
+          }
+          post {
+            success {
+                junit stdioRetention: '', testResults: 'target/surefire-reports/*.xml'
+            }
+          }
+        }
+        stage ('stage5-code-coverage') {
+          step {
+            sh '/opt/maven/bin/mvn verify'
+          }
+          post {
+            success {
+              jacoco buildOverBuild: true, runAlways: true
+            }            
+          }
+        }
+        stage ('stage6-package') {
+          step {
+            sh '/opt/maven/bin/mvn verify'
+          }        
+        }
+    }
+}
